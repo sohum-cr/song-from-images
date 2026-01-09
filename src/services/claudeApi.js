@@ -1,11 +1,5 @@
-import Anthropic from '@anthropic-ai/sdk';
-
-const getAnthropicClient = (apiKey) => {
-  return new Anthropic({
-    apiKey: apiKey,
-    dangerouslyAllowBrowser: true
-  });
-};
+// Backend API URL
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 // Convert image file to base64
 const fileToBase64 = (file) => {
@@ -39,73 +33,35 @@ export const analyzeImages = async (images, apiKey) => {
     throw new Error('No images provided');
   }
 
-  const client = getAnthropicClient(apiKey);
-
   // Convert all images to base64
-  const imageContents = await Promise.all(
+  const imageData = await Promise.all(
     images.map(async (img) => {
       const base64 = await fileToBase64(img.file);
       return {
-        type: 'image',
-        source: {
-          type: 'base64',
-          media_type: getMediaType(img.file),
-          data: base64
-        }
+        mediaType: getMediaType(img.file),
+        data: base64
       };
     })
   );
 
-  const prompt = `Analyze these images from a trip or party experience. Please provide:
-
-1. Overall mood and atmosphere (e.g., energetic, nostalgic, romantic, adventurous, celebratory)
-2. Setting and location vibes (e.g., beach, city nightlife, mountain retreat, house party)
-3. Key activities and moments captured
-4. Dominant colors and visual themes
-5. Emotional arc or narrative thread across all images
-6. Key themes that could inspire song lyrics
-
-Please be detailed and creative in your analysis, capturing the essence and feeling of this experience. Format your response as a JSON object with keys: mood, setting, activities, colors, emotionalArc, themes.`;
-
-  const message = await client.messages.create({
-    model: 'claude-3-5-sonnet-20241022',
-    max_tokens: 2000,
-    messages: [
-      {
-        role: 'user',
-        content: [
-          ...imageContents,
-          {
-            type: 'text',
-            text: prompt
-          }
-        ]
-      }
-    ]
+  // Call backend API
+  const response = await fetch(`${API_URL}/api/analyze-images`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      images: imageData,
+      apiKey: apiKey
+    })
   });
 
-  const responseText = message.content[0].text;
-
-  // Try to extract JSON from the response
-  try {
-    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      return JSON.parse(jsonMatch[0]);
-    }
-  } catch (e) {
-    // If parsing fails, return structured data from text
-    console.warn('Failed to parse JSON response, using fallback');
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to analyze images');
   }
 
-  // Fallback: create structured response from text
-  return {
-    mood: 'upbeat and energetic',
-    setting: 'diverse locations',
-    activities: 'various memorable moments',
-    colors: 'vibrant and dynamic',
-    emotionalArc: responseText,
-    themes: ['adventure', 'friendship', 'memories']
-  };
+  return await response.json();
 };
 
 export const generateSong = async (imageAnalysis, genre, apiKey) => {
@@ -113,169 +69,23 @@ export const generateSong = async (imageAnalysis, genre, apiKey) => {
     throw new Error('API key is required');
   }
 
-  const client = getAnthropicClient(apiKey);
-
-  const genreStyles = {
-    pop: {
-      tempo: 'uptempo 120-130 BPM',
-      style: 'catchy melodic pop',
-      instructions: 'Write catchy, memorable hooks. Use simple, relatable language. Focus on strong melodic phrases and repetition in the chorus.',
-      sunoTags: 'pop, upbeat, melodic, radio-ready'
+  // Call backend API
+  const response = await fetch(`${API_URL}/api/generate-song`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
     },
-    rock: {
-      tempo: 'driving 140-150 BPM',
-      style: 'anthemic rock',
-      instructions: 'Write powerful, bold lyrics with strong imagery. Build intensity. Use driving rhythms and emphatic phrases perfect for shouting along.',
-      sunoTags: 'rock, electric guitar, energetic, powerful'
-    },
-    hiphop: {
-      tempo: 'laid-back 85-95 BPM',
-      style: 'smooth hip hop beat',
-      instructions: 'Write rhythmic, flow-focused verses with clever wordplay. Include internal rhymes and vivid storytelling details.',
-      sunoTags: 'hip hop, rap, rhythmic, urban'
-    },
-    country: {
-      tempo: 'mid-tempo 100-110 BPM',
-      style: 'storytelling country',
-      instructions: 'Tell a clear story with vivid, relatable details. Use conversational language. Paint pictures of places and moments.',
-      sunoTags: 'country, acoustic, storytelling, heartfelt'
-    },
-    edm: {
-      tempo: 'energetic 128 BPM',
-      style: 'progressive house EDM',
-      instructions: 'Write high-energy lyrics with strong build-ups. Keep choruses simple and anthemic for festival crowds. Focus on euphoric feelings.',
-      sunoTags: 'edm, electronic, dance, energetic, festival'
-    },
-    indie: {
-      tempo: 'moderate 110-120 BPM',
-      style: 'alternative indie',
-      instructions: 'Write introspective, authentic lyrics with unique metaphors. Be creative with structure. Capture genuine emotions.',
-      sunoTags: 'indie, alternative, authentic, melodic'
-    },
-    rnb: {
-      tempo: 'groovy 90-100 BPM',
-      style: 'soulful R&B',
-      instructions: 'Write smooth, soulful lyrics with emotional depth. Use sensual imagery and flowing phrases. Emphasize feelings and atmosphere.',
-      sunoTags: 'rnb, soul, smooth, groovy, emotional'
-    },
-    folk: {
-      tempo: 'gentle 95-105 BPM',
-      style: 'acoustic folk',
-      instructions: 'Write poetic, thoughtful lyrics with natural imagery. Focus on storytelling and reflection. Use simple, timeless language.',
-      sunoTags: 'folk, acoustic, storytelling, gentle, organic'
-    }
-  };
-
-  const genreInfo = genreStyles[genre] || genreStyles.pop;
-
-  const prompt = `You are an expert songwriter creating lyrics for Suno AI music generation. Create a complete, professional song based on this image analysis from a trip/party experience.
-
-IMAGE ANALYSIS:
-${JSON.stringify(imageAnalysis, null, 2)}
-
-GENRE: ${genre.toUpperCase()}
-STYLE: ${genreInfo.style}
-TEMPO: ${genreInfo.tempo}
-
-GENRE-SPECIFIC GUIDANCE:
-${genreInfo.instructions}
-
-SONG STRUCTURE REQUIREMENTS:
-
-1. TITLE: Create a memorable, evocative title (3-6 words) that captures the essence of the experience
-
-2. VERSE 1 (4-6 lines):
-   - Set the scene with vivid, specific details
-   - Establish the mood and setting from the images
-   - Use concrete imagery that paints a picture
-   - Natural rhythm and flow for singing
-   - Consider rhyme scheme (AABB, ABAB, or ABCB)
-
-3. CHORUS (3-4 lines):
-   - The emotional core and main message
-   - Highly memorable and repeatable
-   - Strong hook that's easy to sing along to
-   - Captures the overall feeling/theme
-   - Should work when repeated multiple times
-
-4. VERSE 2 (4-6 lines):
-   - Continue the narrative or deepen the emotion
-   - Add new details or perspectives
-   - Build on verse 1, don't just repeat it
-   - Maintain consistent rhyme scheme with verse 1
-   - Move the story forward
-
-5. BRIDGE (3-4 lines):
-   - Provide contrast or a shift in perspective
-   - Emotional peak or moment of reflection
-   - Different melody/rhythm feel from verses
-   - Lead naturally back to the final chorus
-   - Can break the rhyme pattern for impact
-
-LYRIC WRITING RULES:
-✓ Use conversational, singable language (avoid overly complex words)
-✓ Include specific details from the analysis (colors, activities, settings)
-✓ Capture the mood: ${imageAnalysis.mood}
-✓ Reference the setting: ${imageAnalysis.setting}
-✓ Incorporate themes: ${imageAnalysis.themes?.join(', ') || 'memories, emotions, experiences'}
-✓ Create clear, consistent rhyme schemes
-✓ Use strong verbs and vivid imagery
-✓ Make each line scan naturally when spoken aloud
-✓ Avoid clichés - be creative and authentic
-✓ Match the energy level of ${genre} music
-
-SUNO AI PROMPT:
-Create an optimized Suno AI prompt with:
-- Primary genre tag
-- Sub-genres or style descriptors
-- Mood/emotion tags
-- Tempo indication (${genreInfo.tempo})
-- Instrumentation/production style hints
-- Any vocal style notes
-
-Format: "${genreInfo.sunoTags}, ${imageAnalysis.mood}, ${genreInfo.tempo}"
-
-Return ONLY a valid JSON object (no markdown, no code blocks) with these exact keys:
-{
-  "title": "song title here",
-  "verse1": "line 1\\nline 2\\nline 3\\nline 4",
-  "chorus": "line 1\\nline 2\\nline 3",
-  "verse2": "line 1\\nline 2\\nline 3\\nline 4",
-  "bridge": "line 1\\nline 2\\nline 3",
-  "sunoPrompt": "complete Suno AI prompt string"
-}`;
-
-  const message = await client.messages.create({
-    model: 'claude-3-5-sonnet-20241022',
-    max_tokens: 2500,
-    messages: [
-      {
-        role: 'user',
-        content: prompt
-      }
-    ]
+    body: JSON.stringify({
+      imageAnalysis,
+      genre,
+      apiKey
+    })
   });
 
-  const responseText = message.content[0].text;
-
-  // Try to extract JSON from the response
-  try {
-    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      const songData = JSON.parse(jsonMatch[0]);
-
-      // Add genre, mood, and tempo info
-      return {
-        ...songData,
-        genre: genre.charAt(0).toUpperCase() + genre.slice(1),
-        mood: imageAnalysis.mood,
-        tempo: genreInfo.tempo
-      };
-    }
-  } catch (e) {
-    console.error('Failed to parse JSON response:', e);
-    throw new Error('Failed to generate song. Please try again.');
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to generate song');
   }
 
-  throw new Error('Failed to generate song. Please try again.');
+  return await response.json();
 };

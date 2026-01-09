@@ -1,0 +1,17 @@
+{
+  "name": "song-from-images-server",
+  "version": "1.0.0",
+  "description": "Backend server for Song From Images app",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node index.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.32.1",
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1"
+  }
+}
