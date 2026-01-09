@@ -116,55 +116,133 @@ export const generateSong = async (imageAnalysis, genre, apiKey) => {
   const client = getAnthropicClient(apiKey);
 
   const genreStyles = {
-    pop: { tempo: 'uptempo 120-130 BPM', style: 'catchy melodic pop' },
-    rock: { tempo: 'driving 140-150 BPM', style: 'anthemic rock' },
-    hiphop: { tempo: 'laid-back 85-95 BPM', style: 'smooth hip hop beat' },
-    country: { tempo: 'mid-tempo 100-110 BPM', style: 'storytelling country' },
-    edm: { tempo: 'energetic 128 BPM', style: 'progressive house EDM' },
-    indie: { tempo: 'moderate 110-120 BPM', style: 'alternative indie' },
-    rnb: { tempo: 'groovy 90-100 BPM', style: 'soulful R&B' },
-    folk: { tempo: 'gentle 95-105 BPM', style: 'acoustic folk' }
+    pop: {
+      tempo: 'uptempo 120-130 BPM',
+      style: 'catchy melodic pop',
+      instructions: 'Write catchy, memorable hooks. Use simple, relatable language. Focus on strong melodic phrases and repetition in the chorus.',
+      sunoTags: 'pop, upbeat, melodic, radio-ready'
+    },
+    rock: {
+      tempo: 'driving 140-150 BPM',
+      style: 'anthemic rock',
+      instructions: 'Write powerful, bold lyrics with strong imagery. Build intensity. Use driving rhythms and emphatic phrases perfect for shouting along.',
+      sunoTags: 'rock, electric guitar, energetic, powerful'
+    },
+    hiphop: {
+      tempo: 'laid-back 85-95 BPM',
+      style: 'smooth hip hop beat',
+      instructions: 'Write rhythmic, flow-focused verses with clever wordplay. Include internal rhymes and vivid storytelling details.',
+      sunoTags: 'hip hop, rap, rhythmic, urban'
+    },
+    country: {
+      tempo: 'mid-tempo 100-110 BPM',
+      style: 'storytelling country',
+      instructions: 'Tell a clear story with vivid, relatable details. Use conversational language. Paint pictures of places and moments.',
+      sunoTags: 'country, acoustic, storytelling, heartfelt'
+    },
+    edm: {
+      tempo: 'energetic 128 BPM',
+      style: 'progressive house EDM',
+      instructions: 'Write high-energy lyrics with strong build-ups. Keep choruses simple and anthemic for festival crowds. Focus on euphoric feelings.',
+      sunoTags: 'edm, electronic, dance, energetic, festival'
+    },
+    indie: {
+      tempo: 'moderate 110-120 BPM',
+      style: 'alternative indie',
+      instructions: 'Write introspective, authentic lyrics with unique metaphors. Be creative with structure. Capture genuine emotions.',
+      sunoTags: 'indie, alternative, authentic, melodic'
+    },
+    rnb: {
+      tempo: 'groovy 90-100 BPM',
+      style: 'soulful R&B',
+      instructions: 'Write smooth, soulful lyrics with emotional depth. Use sensual imagery and flowing phrases. Emphasize feelings and atmosphere.',
+      sunoTags: 'rnb, soul, smooth, groovy, emotional'
+    },
+    folk: {
+      tempo: 'gentle 95-105 BPM',
+      style: 'acoustic folk',
+      instructions: 'Write poetic, thoughtful lyrics with natural imagery. Focus on storytelling and reflection. Use simple, timeless language.',
+      sunoTags: 'folk, acoustic, storytelling, gentle, organic'
+    }
   };
 
   const genreInfo = genreStyles[genre] || genreStyles.pop;
 
-  const prompt = `Based on this image analysis from a trip/party experience, create a complete song with the following structure:
+  const prompt = `You are an expert songwriter creating lyrics for Suno AI music generation. Create a complete, professional song based on this image analysis from a trip/party experience.
 
-Image Analysis:
+IMAGE ANALYSIS:
 ${JSON.stringify(imageAnalysis, null, 2)}
 
-Genre: ${genre.toUpperCase()}
+GENRE: ${genre.toUpperCase()}
+STYLE: ${genreInfo.style}
+TEMPO: ${genreInfo.tempo}
 
-Please create:
-1. A catchy, memorable song title
-2. Verse 1 (4-6 lines)
-3. A powerful, repeatable chorus (3-4 lines)
-4. Verse 2 (4-6 lines, continuing the story)
-5. A bridge (2-4 lines, providing contrast or emotional peak)
+GENRE-SPECIFIC GUIDANCE:
+${genreInfo.instructions}
 
-The song should:
-- Capture the mood: ${imageAnalysis.mood}
-- Reference the setting: ${imageAnalysis.setting}
-- Incorporate themes: ${imageAnalysis.themes?.join(', ')}
-- Tell a story with the emotional arc: ${imageAnalysis.emotionalArc}
-- Be suitable for ${genre} genre
-- Have natural, singable lyrics
-- Use concrete imagery from the experience
+SONG STRUCTURE REQUIREMENTS:
 
-Also create a Suno AI-optimized prompt that includes:
-- Genre and style tags
-- Mood descriptors
-- Tempo (${genreInfo.tempo})
-- Instrumentation hints
+1. TITLE: Create a memorable, evocative title (3-6 words) that captures the essence of the experience
 
-Return your response as a JSON object with these exact keys:
+2. VERSE 1 (4-6 lines):
+   - Set the scene with vivid, specific details
+   - Establish the mood and setting from the images
+   - Use concrete imagery that paints a picture
+   - Natural rhythm and flow for singing
+   - Consider rhyme scheme (AABB, ABAB, or ABCB)
+
+3. CHORUS (3-4 lines):
+   - The emotional core and main message
+   - Highly memorable and repeatable
+   - Strong hook that's easy to sing along to
+   - Captures the overall feeling/theme
+   - Should work when repeated multiple times
+
+4. VERSE 2 (4-6 lines):
+   - Continue the narrative or deepen the emotion
+   - Add new details or perspectives
+   - Build on verse 1, don't just repeat it
+   - Maintain consistent rhyme scheme with verse 1
+   - Move the story forward
+
+5. BRIDGE (3-4 lines):
+   - Provide contrast or a shift in perspective
+   - Emotional peak or moment of reflection
+   - Different melody/rhythm feel from verses
+   - Lead naturally back to the final chorus
+   - Can break the rhyme pattern for impact
+
+LYRIC WRITING RULES:
+✓ Use conversational, singable language (avoid overly complex words)
+✓ Include specific details from the analysis (colors, activities, settings)
+✓ Capture the mood: ${imageAnalysis.mood}
+✓ Reference the setting: ${imageAnalysis.setting}
+✓ Incorporate themes: ${imageAnalysis.themes?.join(', ') || 'memories, emotions, experiences'}
+✓ Create clear, consistent rhyme schemes
+✓ Use strong verbs and vivid imagery
+✓ Make each line scan naturally when spoken aloud
+✓ Avoid clichés - be creative and authentic
+✓ Match the energy level of ${genre} music
+
+SUNO AI PROMPT:
+Create an optimized Suno AI prompt with:
+- Primary genre tag
+- Sub-genres or style descriptors
+- Mood/emotion tags
+- Tempo indication (${genreInfo.tempo})
+- Instrumentation/production style hints
+- Any vocal style notes
+
+Format: "${genreInfo.sunoTags}, ${imageAnalysis.mood}, ${genreInfo.tempo}"
+
+Return ONLY a valid JSON object (no markdown, no code blocks) with these exact keys:
 {
   "title": "song title here",
-  "verse1": "verse 1 lyrics here (each line separated by \\n)",
-  "chorus": "chorus lyrics here (each line separated by \\n)",
-  "verse2": "verse 2 lyrics here (each line separated by \\n)",
-  "bridge": "bridge lyrics here (each line separated by \\n)",
-  "sunoPrompt": "genre: X, mood: Y, style: Z, tempo: BPM"
+  "verse1": "line 1\\nline 2\\nline 3\\nline 4",
+  "chorus": "line 1\\nline 2\\nline 3",
+  "verse2": "line 1\\nline 2\\nline 3\\nline 4",
+  "bridge": "line 1\\nline 2\\nline 3",
+  "sunoPrompt": "complete Suno AI prompt string"
 }`;
 
   const message = await client.messages.create({

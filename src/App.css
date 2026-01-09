@@ -78,34 +78,214 @@
   min-height: 400px;
 }
 
-.generate-button-container {
+/* Analyze Button */
+.analyze-button-container {
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
   margin-top: 2rem;
   padding-top: 2rem;
   border-top: 2px solid #e2e8f0;
+  animation: fadeIn 0.5s ease-in;
 }
 
-.generate-btn {
-  padding: 1rem 3rem;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+.analyze-btn {
+  padding: 1rem 2.5rem;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
   color: white;
   border: none;
-  border-radius: 50px;
-  font-size: 1.1rem;
+  border-radius: 12px;
+  font-size: 1.05rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
-.generate-btn:hover {
+.analyze-btn:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
 }
 
-.generate-btn:active {
+.analyze-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.analyze-btn:active:not(:disabled) {
   transform: translateY(0);
+}
+
+/* Analysis Complete Badge */
+.analysis-complete {
+  margin: 2rem 0;
+  padding: 1.5rem;
+  background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+  border: 2px solid #10b981;
+  border-radius: 12px;
+  animation: slideIn 0.5s ease-out;
+}
+
+.analysis-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.badge-icon {
+  width: 32px;
+  height: 32px;
+  background: #10b981;
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  font-weight: bold;
+}
+
+.badge-text {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #065f46;
+}
+
+.analysis-summary {
+  background: white;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-top: 1rem;
+}
+
+.analysis-summary p {
+  margin: 0.5rem 0;
+  color: #374151;
+  font-size: 0.95rem;
+}
+
+.analysis-summary strong {
+  color: #10b981;
+}
+
+/* Generate Song Lyrics Button */
+.generate-lyrics-button-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 2.5rem;
+  padding-top: 2rem;
+  border-top: 2px solid #e2e8f0;
+  animation: fadeIn 0.5s ease-in;
+}
+
+.generate-lyrics-btn {
+  padding: 1.5rem 4rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 16px;
+  font-size: 1.3rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 8px 24px rgba(102, 126, 234, 0.4);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.generate-lyrics-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  transition: left 0.5s;
+}
+
+.generate-lyrics-btn:hover:not(:disabled)::before {
+  left: 100%;
+}
+
+.generate-lyrics-btn:hover:not(:disabled) {
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 12px 32px rgba(102, 126, 234, 0.5);
+}
+
+.generate-lyrics-btn:disabled {
+  opacity: 0.8;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.generate-lyrics-btn:active:not(:disabled) {
+  transform: translateY(-2px) scale(1);
+}
+
+.generate-lyrics-btn.regenerate {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  box-shadow: 0 8px 24px rgba(245, 158, 11, 0.4);
+}
+
+.generate-lyrics-btn.regenerate:hover:not(:disabled) {
+  box-shadow: 0 12px 32px rgba(245, 158, 11, 0.5);
+}
+
+.btn-spinner {
+  width: 20px;
+  height: 20px;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.button-hint {
+  margin-top: 1rem;
+  color: #64748b;
+  font-size: 0.9rem;
+  text-align: center;
+  font-style: italic;
+}
+
+/* Results Section */
+.results-section {
+  margin-top: 3rem;
+  padding-top: 2rem;
+  border-top: 3px solid #667eea;
+  animation: fadeIn 0.5s ease-in;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 .error-message {
@@ -192,9 +372,23 @@
     padding: 1.5rem;
   }
 
-  .generate-btn {
+  .analyze-btn {
     width: 100%;
     padding: 0.875rem 2rem;
+  }
+
+  .generate-lyrics-btn {
+    width: 100%;
+    padding: 1.25rem 2rem;
+    font-size: 1.1rem;
+  }
+
+  .analysis-complete {
+    padding: 1.25rem;
+  }
+
+  .analysis-summary p {
+    font-size: 0.9rem;
   }
 }
 
@@ -205,5 +399,18 @@
 
   .app-main {
     padding: 1.25rem;
+  }
+
+  .generate-lyrics-btn {
+    font-size: 1rem;
+    padding: 1rem 1.5rem;
+  }
+
+  .badge-text {
+    font-size: 1rem;
+  }
+
+  .button-hint {
+    font-size: 0.85rem;
   }
 }
