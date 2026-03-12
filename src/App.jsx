@@ -20,6 +20,23 @@ function App() {
   const [analysisComplete, setAnalysisComplete] = useState(false);
   const resultsRef = useRef(null);
 
+  // Load API key from localStorage on mount
+  useEffect(() => {
+    const savedApiKey = localStorage.getItem('anthropic_api_key');
+    if (savedApiKey) {
+      setApiKey(savedApiKey);
+    }
+  }, []);
+
+  // Save API key to localStorage when it changes
+  useEffect(() => {
+    if (apiKey) {
+      localStorage.setItem('anthropic_api_key', apiKey);
+    } else {
+      localStorage.removeItem('anthropic_api_key');
+    }
+  }, [apiKey]);
+
   const handleImagesSelected = (selectedImages) => {
     setImages(selectedImages);
     setError('');
@@ -159,6 +176,7 @@ function App() {
           <a href="https://console.anthropic.com/" target="_blank" rel="noopener noreferrer">
             console.anthropic.com
           </a>
+          {apiKey && ' • Your key is saved in browser storage'}
         </p>
       </div>
 

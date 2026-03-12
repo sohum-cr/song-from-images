@@ -57,8 +57,14 @@ export const analyzeImages = async (images, apiKey) => {
   });
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to analyze images');
+    let errorMessage = 'Failed to analyze images';
+    try {
+      const error = await response.json();
+      errorMessage = error.error || errorMessage;
+    } catch {
+      errorMessage = `Server error: ${response.status} ${response.statusText}`;
+    }
+    throw new Error(errorMessage);
   }
 
   return await response.json();
@@ -83,8 +89,14 @@ export const generateSong = async (imageAnalysis, genre, apiKey) => {
   });
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to generate song');
+    let errorMessage = 'Failed to generate song';
+    try {
+      const error = await response.json();
+      errorMessage = error.error || errorMessage;
+    } catch {
+      errorMessage = `Server error: ${response.status} ${response.statusText}`;
+    }
+    throw new Error(errorMessage);
   }
 
   return await response.json();

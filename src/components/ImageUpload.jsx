@@ -1,10 +1,21 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import './ImageUpload.css';
 
 const ImageUpload = ({ onImagesSelected }) => {
   const [images, setImages] = useState([]);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef(null);
+
+  // Cleanup blob URLs to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      images.forEach(img => {
+        if (img.preview) {
+          URL.revokeObjectURL(img.preview);
+        }
+      });
+    };
+  }, [images]);
 
   const handleFiles = (files) => {
     const imageFiles = Array.from(files).filter(file =>
@@ -43,6 +54,10 @@ const ImageUpload = ({ onImagesSelected }) => {
   };
 
   const removeImage = (id) => {
+    const imageToRemove = images.find(img => img.id === id);
+    if (imageToRemove?.preview) {
+      URL.revokeObjectURL(imageToRemove.preview);
+    }
     const updatedImages = images.filter(img => img.id !== id);
     setImages(updatedImages);
     onImagesSelected(updatedImages);

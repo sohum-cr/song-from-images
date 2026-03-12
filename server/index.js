@@ -19,6 +19,117 @@ const getAnthropicClient = (apiKey) => {
   });
 };
 
+/**
+ * Sanitizes imageAnalysis to prevent prompt injection attacks
+ * Enforces strict schema, truncates values, and removes malicious content
+ */
+const sanitizeImageAnalysis = (imageAnalysis) => {
+  // Define whitelist of allowed fields and their expected types
+  const allowedFields = {
+    mood: 'string',
+    setting: 'string',
+    activities: 'string',
+    colors: 'string',
+    emotionalArc: 'string',
+    themes: 'array',
+  };
+
+  const MAX_STRING_LENGTH = 500;
+  const MAX_ARRAY_ITEM_LENGTH = 100;
+  const MAX_ARRAY_LENGTH = 10;
+
+  // Dangerous phrase patterns that resemble system prompts or injection attempts
+  const dangerousPatterns = [
+    /^\s*(ignore|follow|do not|do\snot|bypass|override|forget|disregard|neglect|skip|omit|exclude|suspend|halt|stop|prevent|block)\s+/i,
+    /system\s+prompt/i,
+    /instructions?\s*:/i,
+    /forget\s+everything/i,
+    /pretend\s+you/i,
+    /act\s+as\s+if/i,
+    /you\s+are\s+now/i,
+    /respond\s+as\s+if/i,
+    /new\s+instructions/i,
+    /updated\s+task/i,
+  ];
+
+  // Control characters and dangerous sequences to scrub
+  const controlCharPattern = /[\x00-\x1F\x7F]/g;
+
+  /**
+   * Removes dangerous lines and scrubs control sequences from text
+   */
+  const scrubText = (text) => {
+    if (typeof text !== 'string') return '';
+
+    // Remove control characters
+    let scrubbed = text.replace(controlCharPattern, ' ');
+
+    // Split into lines and filter out dangerous ones
+    const lines = scrubbed
+      .split('\n')
+      .filter((line) => {
+        const trimmedLine = line.trim();
+        // Check if line matches any dangerous patterns
+        return !dangerousPatterns.some((pattern) => pattern.test(trimmedLine));
+      })
+      .join('\n');
+
+    return lines;
+  };
+
+  /**
+   * Sanitizes a single string value
+   */
+  const sanitizeString = (value) => {
+    if (typeof value !== 'string') return '';
+    const scrubbed = scrubText(value);
+    // Truncate to safe length
+    return scrubbed.substring(0, MAX_STRING_LENGTH).trim();
+  };
+
+  /**
+   * Sanitizes an array of strings
+   */
+  const sanitizeArray = (arr) => {
+    if (!Array.isArray(arr)) return [];
+    return arr
+      .slice(0, MAX_ARRAY_LENGTH)
+      .map((item) => {
+        if (typeof item === 'string') {
+          const scrubbed = scrubText(item);
+          return scrubbed.substring(0, MAX_ARRAY_ITEM_LENGTH).trim();
+        }
+        return '';
+      })
+      .filter((item) => item.length > 0);
+  };
+
+  // Build sanitized object with only whitelisted fields
+  const sanitized = {};
+
+  for (const [field, expectedType] of Object.entries(allowedFields)) {
+    if (field in imageAnalysis) {
+      const value = imageAnalysis[field];
+
+      if (expectedType === 'string') {
+        sanitized[field] = sanitizeString(value);
+      } else if (expectedType === 'array') {
+        sanitized[field] = sanitizeArray(value);
+      }
+    }
+  }
+
+  // Ensure critical fields exist with defaults
+  sanitized.mood = sanitized.mood || 'upbeat';
+  sanitized.setting = sanitized.setting || 'vibrant location';
+  sanitized.activities = sanitized.activities || 'memorable moments';
+  sanitized.colors = sanitized.colors || 'dynamic colors';
+  sanitized.emotionalArc = sanitized.emotionalArc || 'positive experience';
+  sanitized.themes = sanitized.themes || ['memories', 'emotions'];
+
+  return sanitized;
+};
+
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Server is running' });
@@ -77,7 +188,10 @@ Please be detailed and creative in your analysis, capturing the essence and feel
       ],
     });
 
-    const responseText = message.content[0].text;
+    const responseText = message.content?.[0]?.text;
+    if (!responseText) {
+      throw new Error('Empty response from Claude API');
+    }
 
     // Try to extract JSON from the response
     try {
@@ -121,6 +235,9 @@ app.post('/api/generate-song', async (req, res) => {
     if (!imageAnalysis || !genre) {
       return res.status(400).json({ error: 'Image analysis and genre are required' });
     }
+
+    // Sanitize imageAnalysis to prevent prompt injection
+    const sanitizedAnalysis = sanitizeImageAnalysis(imageAnalysis);
 
     const client = getAnthropicClient(apiKey);
 
@@ -180,7 +297,7 @@ app.post('/api/generate-song', async (req, res) => {
     const prompt = `You are an expert songwriter creating lyrics for Suno AI music generation. Create a complete, professional song based on this image analysis from a trip/party experience.
 
 IMAGE ANALYSIS:
-${JSON.stringify(imageAnalysis, null, 2)}
+${JSON.stringify(sanitizedAnalysis, null, 2)}
 
 GENRE: ${genre.toUpperCase()}
 STYLE: ${genreInfo.style}
@@ -224,9 +341,9 @@ SONG STRUCTURE REQUIREMENTS:
 LYRIC WRITING RULES:
 ✓ Use conversational, singable language (avoid overly complex words)
 ✓ Include specific details from the analysis (colors, activities, settings)
-✓ Capture the mood: ${imageAnalysis.mood}
-✓ Reference the setting: ${imageAnalysis.setting}
-✓ Incorporate themes: ${imageAnalysis.themes?.join(', ') || 'memories, emotions, experiences'}
+✓ Capture the mood: ${sanitizedAnalysis.mood}
+✓ Reference the setting: ${sanitizedAnalysis.setting}
+✓ Incorporate themes: ${sanitizedAnalysis.themes?.join(', ') || 'memories, emotions, experiences'}
 ✓ Create clear, consistent rhyme schemes
 ✓ Use strong verbs and vivid imagery
 ✓ Make each line scan naturally when spoken aloud
@@ -242,7 +359,7 @@ Create an optimized Suno AI prompt with:
 - Instrumentation/production style hints
 - Any vocal style notes
 
-Format: "${genreInfo.sunoTags}, ${imageAnalysis.mood}, ${genreInfo.tempo}"
+Format: "${genreInfo.sunoTags}, ${sanitizedAnalysis.mood}, ${genreInfo.tempo}"
 
 Return ONLY a valid JSON object (no markdown, no code blocks) with these exact keys:
 {
@@ -265,7 +382,10 @@ Return ONLY a valid JSON object (no markdown, no code blocks) with these exact k
       ],
     });
 
-    const responseText = message.content[0].text;
+    const responseText = message.content?.[0]?.text;
+    if (!responseText) {
+      throw new Error('Empty response from Claude API');
+    }
 
     // Try to extract JSON from the response
     try {
@@ -277,7 +397,7 @@ Return ONLY a valid JSON object (no markdown, no code blocks) with these exact k
         const completeSongData = {
           ...songData,
           genre: genre.charAt(0).toUpperCase() + genre.slice(1),
-          mood: imageAnalysis.mood,
+          mood: sanitizedAnalysis.mood,
           tempo: genreInfo.tempo,
         };
 
