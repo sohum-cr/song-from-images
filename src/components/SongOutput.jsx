@@ -4,19 +4,34 @@ import './SongOutput.css';
 const SongOutput = ({ songData, onStartOver, onRegenerate }) => {
   const [copiedLyrics, setCopiedLyrics] = useState(false);
   const [copiedPrompt, setCopiedPrompt] = useState(false);
+  const [copyError, setCopyError] = useState('');
 
   const handleCopyLyrics = async () => {
-    const lyricsText = `${songData.title}\n\n[Verse 1]\n${songData.verse1}\n\n[Chorus]\n${songData.chorus}\n\n[Verse 2]\n${songData.verse2}\n\n[Bridge]\n${songData.bridge}\n\n[Chorus]\n${songData.chorus}`;
+    try {
+      const lyricsText = `${songData.title}\n\n[Verse 1]\n${songData.verse1}\n\n[Chorus]\n${songData.chorus}\n\n[Verse 2]\n${songData.verse2}\n\n[Bridge]\n${songData.bridge}\n\n[Chorus]\n${songData.chorus}`;
 
-    await navigator.clipboard.writeText(lyricsText);
-    setCopiedLyrics(true);
-    setTimeout(() => setCopiedLyrics(false), 2000);
+      await navigator.clipboard.writeText(lyricsText);
+      setCopiedLyrics(true);
+      setCopyError('');
+      setTimeout(() => setCopiedLyrics(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy lyrics:', err);
+      setCopyError('Failed to copy. Please try selecting and copying manually.');
+      setTimeout(() => setCopyError(''), 3000);
+    }
   };
 
   const handleCopyPrompt = async () => {
-    await navigator.clipboard.writeText(songData.sunoPrompt);
-    setCopiedPrompt(true);
-    setTimeout(() => setCopiedPrompt(false), 2000);
+    try {
+      await navigator.clipboard.writeText(songData.sunoPrompt);
+      setCopiedPrompt(true);
+      setCopyError('');
+      setTimeout(() => setCopiedPrompt(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy prompt:', err);
+      setCopyError('Failed to copy. Please try selecting and copying manually.');
+      setTimeout(() => setCopyError(''), 3000);
+    }
   };
 
   return (
@@ -32,6 +47,19 @@ const SongOutput = ({ songData, onStartOver, onRegenerate }) => {
           </button>
         </div>
       </div>
+
+      {copyError && (
+        <div style={{
+          backgroundColor: '#fee2e2',
+          color: '#991b1b',
+          padding: '12px 16px',
+          borderRadius: '8px',
+          marginBottom: '16px',
+          fontSize: '14px'
+        }}>
+          {copyError}
+        </div>
+      )}
 
       <div className="song-details">
         <div className="song-title-section">

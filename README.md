@@ -28,23 +28,64 @@ A web application that analyzes your trip/party images using Claude AI's vision 
    cd song-from-images
    ```
 
-3. Install dependencies:
+3. Install frontend dependencies:
    ```bash
    npm install
    ```
 
+4. Install backend dependencies:
+   ```bash
+   cd server
+   npm install
+   cd ..
+   ```
+
 ## Running the Application
 
-1. Start the development server:
+**Important**: This application requires both a backend server and a frontend development server to run.
+
+### Option 1: Run Both Servers (Recommended)
+
+1. **Start the backend server** (in one terminal):
+   ```bash
+   cd server
+   npm start
+   ```
+   The backend will run on `http://localhost:3001`
+
+2. **Start the frontend** (in a second terminal):
    ```bash
    npm run dev
    ```
+   The frontend will run on `http://localhost:5173`
 
-2. Open your browser and navigate to the URL shown in the terminal (typically `http://localhost:5173`)
+3. Open your browser and navigate to `http://localhost:5173`
 
-3. Enter your Anthropic API key in the input field at the top
+4. Enter your Anthropic API key in the input field at the top
 
-4. Upload your images, select a genre, and generate your song!
+5. Upload your images, select a genre, and generate your song!
+
+### Option 2: Use Environment Variable for API Key (Optional)
+
+Instead of entering the API key in the UI, you can set it as an environment variable on the backend:
+
+1. Create a `.env` file in the `server` directory:
+   ```bash
+   cd server
+   cp .env.example .env
+   ```
+
+2. Edit `.env` and add your API key:
+   ```
+   ANTHROPIC_API_KEY=your_api_key_here
+   ```
+
+3. Start the backend server (it will use the env variable):
+   ```bash
+   npm start
+   ```
+
+4. You can now leave the API key field empty in the UI
 
 ## How to Use
 
@@ -57,16 +98,22 @@ A web application that analyzes your trip/party images using Claude AI's vision 
 
 ## Technical Stack
 
+### Frontend
 - **React 18**: Frontend framework with hooks
 - **Vite**: Build tool and dev server
-- **Anthropic SDK**: Claude API integration for image analysis and text generation
 - **CSS3**: Custom styling with responsive design
+
+### Backend
+- **Node.js + Express**: Backend API server
+- **Anthropic SDK**: Claude API integration for image analysis and text generation
+- **CORS**: Cross-origin resource sharing support
+- **dotenv**: Environment variable management
 
 ## Project Structure
 
 ```
 song-from-images/
-├── src/
+├── src/                              # Frontend source code
 │   ├── components/
 │   │   ├── ImageUpload.jsx          # Image upload with drag-and-drop
 │   │   ├── ImageUpload.css
@@ -77,32 +124,63 @@ song-from-images/
 │   │   ├── SongOutput.jsx           # Song display with copy functionality
 │   │   └── SongOutput.css
 │   ├── services/
-│   │   └── claudeApi.js             # Claude API integration
+│   │   └── claudeApi.js             # Backend API client
 │   ├── App.jsx                      # Main application component
 │   ├── App.css                      # Main application styles
 │   ├── index.css                    # Global styles
 │   └── main.jsx                     # Application entry point
-├── package.json
+├── server/                           # Backend server
+│   ├── index.js                     # Express server with API routes
+│   ├── package.json                 # Backend dependencies
+│   └── .env.example                 # Environment variable template
+├── package.json                      # Frontend dependencies
 └── README.md
 ```
 
-## API Usage
+## API Usage & Architecture
 
-This application uses the Anthropic API with the following models:
+This application uses a **client-server architecture**:
 
-- **claude-3-5-sonnet-20241022**: Used for both image analysis (with vision) and song generation
-- The API is called client-side with `dangerouslyAllowBrowser: true` (for demo purposes)
+### Backend Server (Port 3001)
+- Handles all Anthropic API calls securely
+- Provides REST API endpoints:
+  - `POST /api/analyze-images` - Analyzes images using Claude Vision
+  - `POST /api/generate-song` - Generates song lyrics with Claude
+  - `GET /api/health` - Health check endpoint
+- Uses **claude-3-5-sonnet-20241022** model for both image analysis and song generation
+- Supports API key via environment variable or request body
 
-**Note**: In a production environment, API calls should be made from a backend server to keep your API key secure.
+### Frontend (Port 5173)
+- React SPA that communicates with the backend
+- Handles image upload, UI rendering, and user interactions
+- Sends base64-encoded images to the backend
+- No direct Anthropic API calls (more secure)
 
 ## Security Note
 
-⚠️ **Important**: This application stores your API key in memory only (no localStorage or persistence). The key is lost when you refresh the page. However, since the API calls are made from the browser, your API key is exposed in network requests.
+✅ **Backend Architecture**: This application uses a backend server to handle Anthropic API calls, which is more secure than client-side calls.
 
-For production use, consider:
-- Implementing a backend server to handle API calls
-- Using environment variables and server-side API key management
-- Adding authentication and rate limiting
+### API Key Handling
+
+**Option 1 - UI Input (Default)**:
+- API key is sent with each request to the backend
+- Key is stored in frontend memory only (not in localStorage)
+- Key is lost when you refresh the page
+- Key is sent to your own backend server (localhost:3001)
+
+**Option 2 - Environment Variable (More Secure)**:
+- Set `ANTHROPIC_API_KEY` in `server/.env`
+- Backend uses this key for all requests
+- No need to enter key in the UI
+- Key never leaves the server
+- Recommended for production deployments
+
+### Production Deployment Considerations
+- Use environment variables for the API key
+- Add authentication to protect your backend endpoints
+- Implement rate limiting to prevent abuse
+- Use HTTPS for all communications
+- Consider adding user authentication
 
 ## Building for Production
 

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import ImageUpload from './components/ImageUpload';
 import GenreSelection from './components/GenreSelection';
 import ProgressIndicator from './components/ProgressIndicator';
@@ -14,11 +14,36 @@ function App() {
   const [songData, setSongData] = useState(null);
   const [apiKey, setApiKey] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState('');
+  const [analysisComplete, setAnalysisComplete] = useState(false);
+  const [uploadKey, setUploadKey] = useState(0);
+  const resultsRef = useRef(null);
+
+  // Load API key from localStorage on mount
+  useEffect(() => {
+    const savedApiKey = localStorage.getItem('anthropic_api_key');
+    if (savedApiKey) {
+      setApiKey(savedApiKey);
+    }
+  }, []);
+
+  // Save API key to localStorage when it changes
+  useEffect(() => {
+    if (apiKey) {
+      localStorage.setItem('anthropic_api_key', apiKey);
+    } else {
+      localStorage.removeItem('anthropic_api_key');
+    }
+  }, [apiKey]);
 
   const handleImagesSelected = (selectedImages) => {
     setImages(selectedImages);
     setError('');
+    setAnalysisComplete(false);
+    setImageAnalysis(null);
+    setSongData(null);
   };
 
   const handleGenreSelect = (genre) => {
@@ -26,7 +51,7 @@ function App() {
     setError('');
   };
 
-  const handleGenerate = async () => {
+  const handleAnalyzeImages = async () => {
     if (!apiKey.trim()) {
       setError('Please enter your Anthropic API key');
       return;
@@ -37,31 +62,61 @@ function App() {
       return;
     }
 
+    setError('');
+    setIsAnalyzing(true);
+    setIsLoading(true);
+
+    try {
+      setStep('analyze');
+      const analysis = await analyzeImages(images, apiKey);
+      setImageAnalysis(analysis);
+      setAnalysisComplete(true);
+      setStep('upload'); // Stay on upload view but with analysis complete
+    } catch (err) {
+      setError(err.message || 'Failed to analyze images. Please try again.');
+      setAnalysisComplete(false);
+      setStep('upload'); // Restore upload step on error
+    } finally {
+      setIsAnalyzing(false);
+      setIsLoading(false);
+    }
+  };
+
+  const handleGenerateSong = async () => {
+    if (!apiKey.trim()) {
+      setError('Please enter your Anthropic API key');
+      return;
+    }
+
+    if (!imageAnalysis) {
+      setError('Please analyze images first');
+      return;
+    }
+
     if (!selectedGenre) {
       setError('Please select a genre');
       return;
     }
 
     setError('');
+    setIsGenerating(true);
     setIsLoading(true);
 
     try {
-      // Step 1: Analyze images
-      setStep('analyze');
-      const analysis = await analyzeImages(images, apiKey);
-      setImageAnalysis(analysis);
-
-      // Step 2: Generate song
       setStep('generate');
-      const song = await generateSong(analysis, selectedGenre, apiKey);
+      const song = await generateSong(imageAnalysis, selectedGenre, apiKey);
       setSongData(song);
-
-      // Step 3: Show results
       setStep('result');
+
+      // Auto-scroll to results
+      setTimeout(() => {
+        resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
     } catch (err) {
-      setError(err.message || 'An error occurred. Please try again.');
+      setError(err.message || 'Failed to generate song. Please try again.');
       setStep('upload');
     } finally {
+      setIsGenerating(false);
       setIsLoading(false);
     }
   };
@@ -73,12 +128,16 @@ function App() {
     setImageAnalysis(null);
     setSongData(null);
     setError('');
+    setAnalysisComplete(false);
+    setUploadKey(prev => prev + 1); // Force ImageUpload remount
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleRegenerate = async () => {
     if (!imageAnalysis) return;
 
     setError('');
+    setIsGenerating(true);
     setIsLoading(true);
 
     try {
@@ -86,10 +145,16 @@ function App() {
       const song = await generateSong(imageAnalysis, selectedGenre, apiKey);
       setSongData(song);
       setStep('result');
+
+      // Auto-scroll to results
+      setTimeout(() => {
+        resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
     } catch (err) {
       setError(err.message || 'An error occurred. Please try again.');
       setStep('result');
     } finally {
+      setIsGenerating(false);
       setIsLoading(false);
     }
   };
@@ -114,6 +179,7 @@ function App() {
           <a href="https://console.anthropic.com/" target="_blank" rel="noopener noreferrer">
             console.anthropic.com
           </a>
+          {apiKey && ' • Your key is saved in browser storage'}
         </p>
       </div>
 
@@ -130,38 +196,91 @@ function App() {
         <div className="loading-overlay">
           <div className="loading-spinner"></div>
           <p className="loading-text">
-            {step === 'analyze' && 'Analyzing your images...'}
-            {step === 'generate' && 'Generating your song...'}
+            {isAnalyzing && 'Analyzing your images with AI...'}
+            {isGenerating && 'Generating your song lyrics...'}
           </p>
         </div>
       )}
 
       <main className="app-main">
-        {step === 'upload' && !isLoading && (
+        {(step === 'upload' || step === 'result') && !isLoading && (
           <>
-            <ImageUpload onImagesSelected={handleImagesSelected} />
+            <ImageUpload key={uploadKey} onImagesSelected={handleImagesSelected} />
 
-            <GenreSelection
-              selectedGenre={selectedGenre}
-              onGenreSelect={handleGenreSelect}
-            />
-
-            {images.length > 0 && selectedGenre && (
-              <div className="generate-button-container">
-                <button className="generate-btn" onClick={handleGenerate}>
-                  Generate My Song 🎵
+            {/* Analyze Images Button */}
+            {images.length > 0 && !analysisComplete && (
+              <div className="analyze-button-container">
+                <button
+                  className="analyze-btn"
+                  onClick={handleAnalyzeImages}
+                  disabled={isAnalyzing}
+                >
+                  {isAnalyzing ? 'Analyzing...' : 'Analyze Images 🔍'}
                 </button>
+                <p className="button-hint">Analyze your images to understand their vibe</p>
+              </div>
+            )}
+
+            {/* Analysis Complete Indicator */}
+            {analysisComplete && imageAnalysis && (
+              <div className="analysis-complete">
+                <div className="analysis-badge">
+                  <span className="badge-icon">✓</span>
+                  <span className="badge-text">Images Analyzed Successfully!</span>
+                </div>
+                <div className="analysis-summary">
+                  <p><strong>Mood:</strong> {imageAnalysis.mood}</p>
+                  <p><strong>Setting:</strong> {imageAnalysis.setting}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Genre Selection - only show after analysis */}
+            {analysisComplete && (
+              <GenreSelection
+                selectedGenre={selectedGenre}
+                onGenreSelect={handleGenreSelect}
+              />
+            )}
+
+            {/* Generate Song Lyrics Button - only show after analysis AND genre selection */}
+            {analysisComplete && selectedGenre && (
+              <div className="generate-lyrics-button-container">
+                <button
+                  className={`generate-lyrics-btn ${songData ? 'regenerate' : ''}`}
+                  onClick={handleGenerateSong}
+                  disabled={isGenerating}
+                >
+                  {isGenerating ? (
+                    <>
+                      <span className="btn-spinner"></span>
+                      Generating Lyrics...
+                    </>
+                  ) : songData ? (
+                    <>🔄 Regenerate Song Lyrics</>
+                  ) : (
+                    <>✨ Generate Song Lyrics</>
+                  )}
+                </button>
+                <p className="button-hint">
+                  {songData
+                    ? 'Generate a new version with different lyrics'
+                    : 'Create custom lyrics based on your images and genre'}
+                </p>
               </div>
             )}
           </>
         )}
 
+        {/* Results Section */}
         {step === 'result' && songData && !isLoading && (
-          <SongOutput
-            songData={songData}
-            onStartOver={handleStartOver}
-            onRegenerate={handleRegenerate}
-          />
+          <div ref={resultsRef} className="results-section">
+            <SongOutput
+              songData={songData}
+              onStartOver={handleStartOver}
+              onRegenerate={handleRegenerate}
+            />
+          </div>
         )}
       </main>
 
