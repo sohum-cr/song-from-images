@@ -18,6 +18,7 @@ function App() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState('');
   const [analysisComplete, setAnalysisComplete] = useState(false);
+  const [uploadKey, setUploadKey] = useState(0);
   const resultsRef = useRef(null);
 
   // Load API key from localStorage on mount
@@ -74,6 +75,7 @@ function App() {
     } catch (err) {
       setError(err.message || 'Failed to analyze images. Please try again.');
       setAnalysisComplete(false);
+      setStep('upload'); // Restore upload step on error
     } finally {
       setIsAnalyzing(false);
       setIsLoading(false);
@@ -127,6 +129,7 @@ function App() {
     setSongData(null);
     setError('');
     setAnalysisComplete(false);
+    setUploadKey(prev => prev + 1); // Force ImageUpload remount
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -202,7 +205,7 @@ function App() {
       <main className="app-main">
         {(step === 'upload' || step === 'result') && !isLoading && (
           <>
-            <ImageUpload onImagesSelected={handleImagesSelected} />
+            <ImageUpload key={uploadKey} onImagesSelected={handleImagesSelected} />
 
             {/* Analyze Images Button */}
             {images.length > 0 && !analysisComplete && (

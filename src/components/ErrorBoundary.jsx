@@ -1,5 +1,7 @@
 import { Component } from 'react';
 
+const isDev = import.meta.env.DEV;
+
 class ErrorBoundary extends Component {
   constructor(props) {
     super(props);
@@ -59,7 +61,7 @@ class ErrorBoundary extends Component {
           >
             Reload App
           </button>
-          {process.env.NODE_ENV === 'development' && this.state.error && (
+          {isDev && this.state.error && (
             <details style={{ marginTop: '32px', textAlign: 'left' }}>
               <summary style={{ cursor: 'pointer', color: '#666', marginBottom: '8px' }}>
                 Error Details (Development Only)

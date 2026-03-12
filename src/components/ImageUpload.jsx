@@ -5,17 +5,23 @@ const ImageUpload = ({ onImagesSelected }) => {
   const [images, setImages] = useState([]);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef(null);
+  const imagesRef = useRef([]);
 
-  // Cleanup blob URLs to prevent memory leaks
+  // Keep ref updated with current images
+  useEffect(() => {
+    imagesRef.current = images;
+  }, [images]);
+
+  // Cleanup blob URLs only on unmount to prevent memory leaks
   useEffect(() => {
     return () => {
-      images.forEach(img => {
+      imagesRef.current.forEach(img => {
         if (img.preview) {
           URL.revokeObjectURL(img.preview);
         }
       });
     };
-  }, [images]);
+  }, []); // Only run cleanup on unmount
 
   const handleFiles = (files) => {
     const imageFiles = Array.from(files).filter(file =>

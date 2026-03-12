@@ -8,8 +8,27 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// CORS configuration with origin whitelist
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(',')
+  : ['http://localhost:5173', 'http://localhost:4173', 'http://localhost:3000'];
+
+const corsOptions = {
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+};
+
 // Middleware
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(express.json({ limit: '50mb' }));
 
 // Initialize Anthropic client
@@ -392,6 +411,15 @@ Return ONLY a valid JSON object (no markdown, no code blocks) with these exact k
       const jsonMatch = responseText.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         const songData = JSON.parse(jsonMatch[0]);
+
+        // Validate required song fields
+        const requiredFields = ['title', 'verse1', 'chorus', 'verse2', 'bridge', 'sunoPrompt'];
+        const missingFields = requiredFields.filter(field => !songData[field] || typeof songData[field] !== 'string' || songData[field].trim() === '');
+
+        if (missingFields.length > 0) {
+          console.error('Missing or invalid song fields:', missingFields);
+          throw new Error(`Incomplete song data: missing ${missingFields.join(', ')}`);
+        }
 
         // Add genre, mood, and tempo info
         const completeSongData = {
